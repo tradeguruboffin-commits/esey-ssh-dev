@@ -44,6 +44,7 @@ To install SSHX, clone the repository and run the installer:
 git clone https://github.com/tradeguruboffin-commits/esey-ssh-dev.git
 cd esey-ssh-dev
 ./bin/sshx-dev install
+```
 
 This will:
 
@@ -53,79 +54,71 @@ Create a desktop entry for the GUI
 
 Make sshx and sshx-gui globally accessible
 
-
-
 ---
 
-🗑 Uninstall
+## 🗑 Uninstall
 
 To remove SSHX:
 
+```bash
 ./bin/sshx-dev uninstall
+```
 
-
----
-
-🖥 Usage (CLI)
+## 🖥 Usage (CLI)
 
 Connect to a server:
-
+```bash
 sshx user@ip:port
-
+```
 Remove a saved host:
-
+```bash
 sshx user@ip:port --remove
-
+```
 List saved hosts:
-
+```bash
 sshx --list
-
+```
 Interactive menu (requires fzf):
-
+```bash
 sshx --menu
-
+```
 Doctor check:
-
+```bash
 sshx --doctor
+```
 
-
----
-
-🖥 Usage (GUI)
+## 🖥 Usage (GUI)
 
 After installation, launch:
-
+```bash
 sshx-gui
-
+```
 Or open SSHX from your system applications menu.
 
 Enter:
-
+```bash
 user@ip:port
-
+```
 Click Connect.
-
 
 ---
 
-📦 Dependencies
+## 📦 Dependencies
 
 Required:
-
+```bash
 OpenSSH client
 
 jq
 
 
-Optional:
+# Optional:
 
 fzf (for interactive menu)
 
+```
 
-
----
-
-🔒 Security Notes
+## 🔒 Security Notes
 
 SSH keys are stored in: ~/.ssh/
 
@@ -136,12 +129,8 @@ Key permissions are automatically fixed to 600
 Known hosts entries are safely cleaned when removing hosts
 
 
-
----
-
-👤 Author
-
+## 👤 Author
+```bash
 Sumit
+```
 
-
----
