@@ -78,6 +78,7 @@ cd "$PROJECT_ROOT"
 cd "$LIB"
 ./build-git-auth
 ./build-sshx-cpy
+./build-reset
 
 # ---------------- Python Build ----------------
 
@@ -89,19 +90,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 pip install --upgrade pip pyinstaller
-
-echo "🔁 Building reset helper..."
-cd "$LIB"
-./build-reset
-
-echo "📦 Moving helper binaries..."
-mv -f "$LIB/dist/sshx-reset" "$LIB/" 2>/dev/null || true
-rm -rf "$LIB/dist" "$LIB/build" "$LIB/sshx-reset.spec"
-
-if [[ ! -f "$LIB/sshx-reset" ]]; then
-  echo "❌ sshx-reset missing. GUI cannot build."
-  exit 1
-fi
 
 echo "🖥 Building GUI..."
 cd "$GUI"

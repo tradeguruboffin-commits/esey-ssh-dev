@@ -1,14 +1,32 @@
 #!/bin/bash
-# build-py.sh - PyInstaller script equivalent
+# build-git-auth.sh - Optimized Go binary builder
 
-echo "🚀 Building Python binary..."
+set -e
 
-# Single file optimized
-pyinstaller --onefile \
-            --name sshx-reset \
-            --strip \
-            --clean \
-            sshx-reset.py
+SOURCE_FILE="sshx-reset.go"
+BINARY_NAME="sshx-reset"
 
-echo "✅ Build complete! dist/sshx-reset ready"
-echo "💡 Test: ./dist/sshx-reset"
+if [ ! -f "$SOURCE_FILE" ]; then
+    echo "❌ Error: $SOURCE_FILE found manually check your directory."
+    exit 1
+fi
+
+echo "🚀 Building $BINARY_NAME binary..."
+echo "📦 Using -ldflags '-s -w' for smaller size"
+
+before=$(stat -c%s "$SOURCE_FILE")
+
+go build -ldflags="-s -w" -o "$BINARY_NAME" "$SOURCE_FILE"
+
+after=$(stat -c%s "$BINARY_NAME")
+
+echo "✅ Build successful!"
+echo "📊 $SOURCE_FILE: ${before}B → $BINARY_NAME: ${after}B"
+
+reduction=$(awk "BEGIN {pc=($before-$after)*100/$before; printf \"%.1f\", pc}")
+
+echo "💾 Size: ${reduction}% smaller (Compression via stripping)"
+echo "---"
+echo "🎉 $BINARY_NAME binary ready!"
+echo "💡 Test: ./$BINARY_NAME"
+echo "💡 Move: mv $BINARY_NAME ~/bin/"
