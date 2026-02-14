@@ -95,7 +95,7 @@ echo "📦 Moving gui binaries..."
 
 if [[ -d "$GUI/dist/sshx-gui" ]]; then
   mv -f "$GUI/dist/sshx-gui/sshx-gui" "$GUI/"
-  mv -rf "$GUI/dist/sshx-gui/_internal" "$GUI/"
+  mv -f "$GUI/dist/sshx-gui/_internal" "$GUI/"
 else
   echo "❌ GUI build failed — dist folder missing."
   exit 1

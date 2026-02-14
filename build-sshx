@@ -54,4 +54,4 @@ fi
 echo -e "\n🧪 Test: ./bin/$BINARY_NAME --version"
 echo -e "📦 Install: sudo cp ./bin/$BINARY_NAME /usr/local/bin/"
 
-echo -e "\n${GREEN}${BOLD}🎉 Build Completed Successfully!${NC}"
+echo -e "\n${GREEN}${BOLD}⚙️ Main Binary Build Completed!${NC}"
