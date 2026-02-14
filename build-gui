@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -e
+
+APP_NAME="sshx-gui"
+ROOT_DIR="$(pwd)"
+GUI_DIR="$ROOT_DIR/gui"
+
+echo "🚀 Cleaning old builds..."
+rm -rf "$GUI_DIR/build"
+rm -rf "$GUI_DIR/dist"
+rm -f  "$GUI_DIR/$APP_NAME.spec"
+
+cd "$GUI_DIR"
+
+echo "🔨 Building GUI (onedir mode)..."
+
+pyinstaller \
+  --noconfirm \
+  --onedir \
+  --name $APP_NAME \
+  --clean \
+  --noupx \
+  --add-data "../bin:bin" \
+  --add-data "lib:gui/lib" \
+  esey-ssh-gui.py
+
+echo "✅ Build complete!"
+echo "📦 Output: gui/dist/$APP_NAME"
