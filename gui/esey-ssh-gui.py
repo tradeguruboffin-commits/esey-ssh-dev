@@ -7,7 +7,7 @@ import sys
 gi.require_version("Gtk", "3.0")
 gi.require_version("Vte", "2.91")
 
-from gi.repository import Gtk, Vte, GLib
+from gi.repository import Gtk, Vte, GLib, Gdk
 
 
 # --------------------------------------------------
@@ -21,21 +21,12 @@ def get_root_dir():
     - Installed in /opt/esey-ssh-dev
     - Running from PyInstaller --onedir
     """
-
-    # If running as PyInstaller binary
     if getattr(sys, "frozen", False):
         exe_dir = os.path.dirname(sys.executable)
-        # Executable lives in ROOT/gui → go one level up
         return os.path.abspath(os.path.join(exe_dir, ".."))
-
-    # Running from source
     current_dir = os.path.abspath(os.path.dirname(__file__))
-
-    # If inside ROOT/gui
     if os.path.basename(current_dir) == "gui":
         return os.path.abspath(os.path.join(current_dir, ".."))
-
-    # Otherwise assume current directory is root
     return current_dir
 
 
@@ -61,6 +52,17 @@ class TerminalTab(Gtk.Box):
         self.terminal = Vte.Terminal()
         self.pack_start(self.terminal, True, True, 0)
 
+        # Terminal options
+        self.terminal.set_mouse_autohide(False)
+        self.terminal.set_rewrap_on_resize(True)
+
+        # Mouse right-click menu
+        self.terminal.connect("button-press-event", self.on_right_click)
+
+        # Keyboard shortcuts (Ctrl+Shift for copy/paste/select all)
+        self.terminal.connect("key-press-event", self.on_key_press)
+
+        # Spawn shell or command
         self.spawn(command)
         self.show_all()
 
@@ -82,6 +84,51 @@ class TerminalTab(Gtk.Box):
             None,
             None,
         )
+
+    # --------------------------------------------------
+    # Right-click menu
+    # --------------------------------------------------
+    def on_right_click(self, widget, event):
+        if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 3:
+            menu = Gtk.Menu()
+
+            copy_item = Gtk.MenuItem(label="Copy")
+            copy_item.connect("activate", lambda w: self.terminal.copy_clipboard())
+            menu.append(copy_item)
+
+            paste_item = Gtk.MenuItem(label="Paste")
+            paste_item.connect("activate", lambda w: self.terminal.paste_clipboard())
+            menu.append(paste_item)
+
+            select_all_item = Gtk.MenuItem(label="Select All")
+            select_all_item.connect("activate", lambda w: self.terminal.select_all())
+            menu.append(select_all_item)
+
+            menu.show_all()
+            menu.popup_at_pointer(event)
+            return True
+        return False
+
+    # --------------------------------------------------
+    # Keyboard shortcuts
+    # --------------------------------------------------
+    def on_key_press(self, widget, event):
+        ctrl = (event.state & Gdk.ModifierType.CONTROL_MASK)
+        shift = (event.state & Gdk.ModifierType.SHIFT_MASK)
+        key = Gdk.keyval_name(event.keyval).lower()
+
+        # Ctrl+Shift shortcuts for terminal copy/paste/select all
+        if ctrl and shift:
+            if key == "c":
+                self.terminal.copy_clipboard()
+                return True
+            elif key == "v":
+                self.terminal.paste_clipboard()
+                return True
+            elif key == "a":
+                self.terminal.select_all()
+                return True
+        return False
 
 
 # --------------------------------------------------
@@ -121,6 +168,9 @@ class SSHXGUI(Gtk.Window):
 
         self.show_all()
 
+    # --------------------------------------------------
+    # Buttons
+    # --------------------------------------------------
     def add_btn(self, box, label, callback):
         btn = Gtk.Button(label=label)
         btn.connect("clicked", callback)
@@ -142,7 +192,6 @@ class SSHXGUI(Gtk.Window):
     # --------------------------------------------------
     # Popups
     # --------------------------------------------------
-
     def connect_popup(self, button):
         self.simple_input_popup(
             "Connect to SSHX",
@@ -190,7 +239,6 @@ class SSHXGUI(Gtk.Window):
     # --------------------------------------------------
     # Fingerprint
     # --------------------------------------------------
-
     def copy_fingerprint(self, button):
         pubkey = os.path.expanduser("~/.ssh/id_ed25519.pub")
         if not os.path.exists(pubkey):
@@ -200,7 +248,8 @@ class SSHXGUI(Gtk.Window):
         self.new_tab(["ssh-keygen", "-lf", pubkey], "Fingerprint")
 
     # --------------------------------------------------
-
+    # Tabs
+    # --------------------------------------------------
     def close_tab(self, button):
         page = self.notebook.get_current_page()
         if page != -1:
