@@ -110,10 +110,6 @@ echo "🧼 Cleaning virtual environment..."
 deactivate 2>/dev/null || true
 rm -rf "$PROJECT_ROOT/.venv"
 
-if [[ "${CI:-false}" != "true" ]] && command -v tree >/dev/null; then
-  tree "$PROJECT_ROOT"
-fi
-
 echo ""
 echo "🔍 Verifying build artifacts..."
 
@@ -142,6 +138,9 @@ done
 echo ""
 echo "✅ All build artifacts verified."
 echo ""
+echo "📦 Build Summary:"
+printf "  ✔ %s\n" "${artifacts[@]}"
+echo ""
 for f in "${artifacts[@]}"; do
   chmod +x "$f"
 done
@@ -156,5 +155,5 @@ else
 fi
 
 echo ""
-echo "✅ SSHX fully installed successful!"
+echo "✅ SSHX CLI + GUI installed successfully!"
 echo ""
