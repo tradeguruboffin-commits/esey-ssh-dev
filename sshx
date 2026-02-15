@@ -4,6 +4,8 @@
 # Author: Sumit
 # =========================================================
 
+set -Eeuo pipefail
+
 VERSION="1.1"
 CACHE="$HOME/.ssh/sshx.json"
 KEY="$HOME/.ssh/id_ed25519"
@@ -20,74 +22,119 @@ need() { command -v "$1" &>/dev/null || die "$1 not installed"; }
 # ================= INIT =================
 init() {
   mkdir -p ~/.ssh
+  chmod 700 ~/.ssh
+
+  need ssh
+  need jq
+
   [ -f "$CACHE" ] || echo "{}" > "$CACHE"
+
+  # Fix corrupted cache
+  if ! jq empty "$CACHE" >/dev/null 2>&1; then
+    warn "Cache corrupted — resetting"
+    echo "{}" > "$CACHE"
+  fi
 
   if [ ! -f "$KEY" ]; then
     info "Generating SSH key..."
     ssh-keygen -t ed25519 -f "$KEY" -N "" || die "Keygen failed"
   fi
 
-  chmod 600 "$KEY" 2>/dev/null && ok "Key permission fixed (600)"
+  [ -f "$KEY.pub" ] || die "Public key missing"
+
+  chmod 600 "$KEY" 2>/dev/null || true
+  ok "Key permission fixed (600)"
 }
 
 # ================= PARSE =================
 parse() {
-  if [[ "$1" == *"@"*":"* ]]; then
-    USER="${1%@*}"
-    HOSTPORT="${1#*@}"
-    HOST="${HOSTPORT%:*}"
-    PORT="${HOSTPORT##*:}"
+  local input="$1"
+
+  # IPv6 format: user@[2001:db8::1]:22
+  if [[ "$input" =~ ^([^@]+)@\[(.+)\]:([0-9]+)$ ]]; then
+    USER="${BASH_REMATCH[1]}"
+    HOST="${BASH_REMATCH[2]}"
+    PORT="${BASH_REMATCH[3]}"
+
+  # IPv4 / hostname format: user@host:22
+  elif [[ "$input" =~ ^([^@]+)@([^:]+):([0-9]+)$ ]]; then
+    USER="${BASH_REMATCH[1]}"
+    HOST="${BASH_REMATCH[2]}"
+    PORT="${BASH_REMATCH[3]}"
   else
-    [[ -z "$1" || -z "$2" || -z "$3" ]] && die "Invalid format. Use: user@ip:port"
-    USER="$1"; HOST="$2"; PORT="$3"
+    die "Invalid format. Use: user@ip:port or user@[ipv6]:port"
   fi
+
+  [[ "$PORT" =~ ^[0-9]+$ ]] || die "Invalid port"
 }
 
 # ================= CACHE =================
 exists() {
-  jq -e "has(\"$USER@$HOST:$PORT\")" "$CACHE" >/dev/null 2>&1
+  jq -e --arg key "$USER@$HOST:$PORT" 'has($key)' "$CACHE" >/dev/null 2>&1
 }
 
+add_cache() {
+  jq --arg key "$USER@$HOST:$PORT" \
+     --arg user "$USER" \
+     --arg host "$HOST" \
+     --argjson port "$PORT" \
+     '. + {($key): {user:$user,host:$host,port:$port}}' \
+     "$CACHE" > "$CACHE.tmp" && mv "$CACHE.tmp" "$CACHE"
+}
+
+remove_cache() {
+  jq --arg key "$USER@$HOST:$PORT" \
+     'del(.[$key])' \
+     "$CACHE" > "$CACHE.tmp" && mv "$CACHE.tmp" "$CACHE"
+}
+
+# ================= CONNECT =================
 connect() {
+
+  local SSH_HOST="$HOST"
+  [[ "$HOST" == *:* ]] && SSH_HOST="[$HOST]"  # IPv6 wrapper
+
   if ! exists; then
       info "First time connecting — testing connection and copying key if needed..."
-      timeout 5 ssh -o ConnectTimeout=5 -p "$PORT" "$USER@$HOST" exit 2>/dev/null \
-        || warn "Password may be required for initial connection"
 
-      # Copy key automatically
-      ssh-copy-id -i "$KEY.pub" -o StrictHostKeyChecking=no -p "$PORT" "$USER@$HOST" \
-        || warn "Key copy failed; you may need to enter password manually"
+      if command -v timeout >/dev/null; then
+        timeout 5 ssh -o ConnectTimeout=5 -p "$PORT" "$USER@$SSH_HOST" exit 2>/dev/null \
+          || warn "Password may be required"
+      else
+        ssh -o ConnectTimeout=5 -p "$PORT" "$USER@$SSH_HOST" exit 2>/dev/null \
+          || warn "Password may be required"
+      fi
 
-      # Save to cache
-      jq ". + {\"$USER@$HOST:$PORT\": {user:\"$USER\",host:\"$HOST\",port:$PORT}}" \
-        "$CACHE" > "$CACHE.tmp" && mv "$CACHE.tmp" "$CACHE"
+      ssh-copy-id -i "$KEY.pub" -o StrictHostKeyChecking=no \
+        -p "$PORT" "$USER@$SSH_HOST" \
+        || warn "Key copy failed; enter password manually"
+
+      add_cache
       ok "Host registered and key copied (if possible)"
   fi
 
   info "Connecting to $USER@$HOST:$PORT …"
-  exec ssh -p "$PORT" "$USER@$HOST"
+  exec ssh -p "$PORT" "$USER@$SSH_HOST"
 }
 
+# ================= REMOVE =================
 remove() {
   exists || die "Entry not found"
 
-  # Remove host from known_hosts and known_hosts.old
-  KH_ENTRY="[$HOST]:$PORT"
-  for KH in "$HOME/.ssh/known_hosts" "$HOME/.ssh/known_hosts.old"; do
-      [ -f "$KH" ] || continue
-      grep -v "^$KH_ENTRY " "$KH" > "$KH.tmp" && mv "$KH.tmp" "$KH"
-  done
-  ok "Removed known_host: $KH_ENTRY from known_hosts & known_hosts.old"
+  # Safer known_hosts cleanup
+  ssh-keygen -R "[$HOST]:$PORT" >/dev/null 2>&1 || true
+  ok "Removed known_host entry"
 
-  # Remove from sshx cache
-  jq "del(.\"$USER@$HOST:$PORT\")" "$CACHE" > "$CACHE.tmp" && mv "$CACHE.tmp" "$CACHE"
+  remove_cache
   ok "Removed entry from sshx cache"
 }
 
+# ================= LIST =================
 list() {
   jq -r 'keys[]' "$CACHE" 2>/dev/null || echo "(empty)"
 }
 
+# ================= FZF =================
 fzf_menu() {
   need fzf
   sel=$(list | fzf --prompt="SSH > ")
@@ -95,6 +142,7 @@ fzf_menu() {
   sshx "$sel"
 }
 
+# ================= DOCTOR =================
 doctor() {
   echo "sshx v$VERSION"
   need ssh
@@ -104,18 +152,20 @@ doctor() {
   stat -c "%a" "$KEY" 2>/dev/null | grep -q 600 && ok "Key permission OK" || warn "Fix key permission"
 }
 
+# ================= HELP =================
 help() {
 cat <<EOF
 sshx v$VERSION — Simple SSH Manager
 
 USAGE:
-  sshx user@ip:port             Connect (passwordless or first-time with password)
-  sshx user@ip:port --remove    Remove host entry
+  sshx user@ip:port
+  sshx user@[ipv6]:port
+  sshx user@ip:port --remove
 
 OTHER:
-  sshx --list                   List saved hosts
-  sshx --menu                   fzf interactive menu
-  sshx --doctor                 Self check
+  sshx --list
+  sshx --menu
+  sshx --doctor
   sshx --version | -v
   sshx --help | -h
 EOF
@@ -133,12 +183,8 @@ case "$1" in
   --menu) fzf_menu ;;
   --doctor) doctor ;;
   *)
-    if [[ ! "$1" =~ ^.+@.+:.+$ ]]; then
-      die "❌ Invalid format. Use: user@ip:port"
-    fi
-
     parse "$1"
-    case "$2" in
+    case "${2:-}" in
       --remove) remove ;;
       ""|--) connect ;;
       *) help ;;
