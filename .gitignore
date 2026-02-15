@@ -14,6 +14,9 @@ gui/lib/git-auth
 gui/lib/sshx-cpy
 gui/lib/sshx-reset
 
+# Built log
+install.log
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
