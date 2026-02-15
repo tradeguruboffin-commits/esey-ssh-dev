@@ -187,5 +187,4 @@ fi
 
 echo ""
 echo "----------------------------------------"
-ok "Installation Completed Successfully"
 echo "Log file: $LOG_FILE"
