@@ -43,7 +43,10 @@ done
 
 run() {
   log "$*"
-  [[ "$DRY_RUN" == true ]] || "$@"
+  if [[ "$DRY_RUN" == true ]]; then
+    return 0
+  fi
+  "$@"
 }
 
 confirm() {
@@ -62,6 +65,11 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 echo -e "${BLUE}🔧 esey-ssh-dev Installer ${NC}"
 echo "Project Root: $PROJECT_ROOT"
 echo "----------------------------------------"
+
+if [[ "$DRY_RUN" == true ]]; then
+  echo -e "${YELLOW}⚠ DRY RUN MODE — No changes will be made${NC}"
+  echo "----------------------------------------"
+fi
 
 # ---------------- Detect OS ----------------
 
@@ -159,17 +167,22 @@ fi
 
 VENV="$PROJECT_ROOT/.venv"
 
-if [[ ! -d "$VENV" ]]; then
-  log "Creating virtual environment..."
-  [[ "$DRY_RUN" == true ]] || python3 -m venv "$VENV"
-fi
-
-if [[ -x "$VENV/bin/python" ]]; then
-  run "$VENV/bin/python" -m pip install --upgrade pip setuptools wheel pyinstaller
-  ok "Python build tools ready"
+if [[ "$DRY_RUN" == true ]]; then
+  log "[DRY RUN] Would create virtual environment at $VENV"
+  log "[DRY RUN] Would install pip setuptools wheel pyinstaller"
 else
-  err "Venv setup failed"
-  exit 1
+  if [[ ! -d "$VENV" ]]; then
+    log "Creating virtual environment..."
+    python3 -m venv "$VENV"
+  fi
+
+  if [[ -x "$VENV/bin/python" ]]; then
+    run "$VENV/bin/python" -m pip install --upgrade pip setuptools wheel pyinstaller
+    ok "Python build tools ready"
+  else
+    err "Venv setup failed"
+    exit 1
+  fi
 fi
 
 # ---------------- Auto Build (Optional) ----------------
