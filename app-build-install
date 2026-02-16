@@ -160,6 +160,9 @@ if [[ "$DRY_RUN" == false ]]; then
 
   run pip install --upgrade pip setuptools wheel
   run pip install --no-cache-dir pyinstaller
+  run pip install "pyinstaller-hooks-contrib>=2025.2"
+  run pip install --force-reinstall pyinstaller==6.13.0
+
 else
   echo "➜ source .venv/bin/activate"
   echo "➜ pip install --upgrade pip setuptools wheel"
