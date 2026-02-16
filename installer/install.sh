@@ -33,11 +33,48 @@ DRY_RUN=false
 AUTO_YES=false
 AUTO_BUILD=false
 
-for arg in "$@"; do
-  case "$arg" in
-    --dry-run) DRY_RUN=true ;;
-    -y|--yes) AUTO_YES=true ;;
-    --build) AUTO_BUILD=true ;;
+# ---------------- Argument Parser ----------------
+
+usage() {
+  echo "Usage: $0 [options]"
+  echo ""
+  echo "Options:"
+  echo "  --dry-run       Show actions without executing"
+  echo "  -y, --yes       Auto confirm all prompts"
+  echo "  --build         Run app-build-install after setup"
+  echo "  -h, --help      Show this help message"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    -y|--yes)
+      AUTO_YES=true
+      shift
+      ;;
+    --build)
+      AUTO_BUILD=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -*)
+      err "Unknown option: $1"
+      echo ""
+      usage
+      exit 1
+      ;;
+    *)
+      err "Unexpected argument: $1"
+      echo ""
+      usage
+      exit 1
+      ;;
   esac
 done
 
@@ -163,24 +200,29 @@ else
   ok "Core dependencies OK"
 fi
 
-# ---------------- Python Venv ----------------
+# ---------------- Python Venv Check (Auto Install + Recheck) ----------------
 
-VENV="$PROJECT_ROOT/.venv"
+echo "Checking python venv support..."
 
-if [[ "$DRY_RUN" == true ]]; then
-  log "[DRY RUN] Would create virtual environment at $VENV"
-  log "[DRY RUN] Would install pip setuptools wheel pyinstaller"
+if python3 -m venv --help >/dev/null 2>&1; then
+  ok "python3 venv module available"
 else
-  if [[ ! -d "$VENV" ]]; then
-    log "Creating virtual environment..."
-    python3 -m venv "$VENV"
-  fi
+  warn "python3 venv module missing"
+  confirm || exit 1
 
-  if [[ -x "$VENV/bin/python" ]]; then
-    run "$VENV/bin/python" -m pip install --upgrade pip setuptools wheel pyinstaller
-    ok "Python build tools ready"
+  case "$OS" in
+    debian) install_pkgs python3-venv ;;
+    fedora) install_pkgs python3 ;;
+    arch) install_pkgs python ;;
+    alpine) install_pkgs py3-virtualenv ;;
+    termux) install_pkgs python ;;
+    macos) install_pkgs python ;;
+  esac
+
+  if python3 -m venv --help >/dev/null 2>&1; then
+    ok "python3 venv module installed successfully"
   else
-    err "Venv setup failed"
+    err "python3 venv still unavailable after installation"
     exit 1
   fi
 fi
