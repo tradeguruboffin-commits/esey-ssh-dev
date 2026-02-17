@@ -147,7 +147,7 @@ echo "🐍 Creating virtual environment..."
 cd "$PROJECT_ROOT"
 run rm -rf .venv
 
-run "$PYTHON_BIN" -m venv --system-site-packages .venv
+run "$PYTHON_BIN" -m venv .venv
 
 if [[ "$DRY_RUN" == false ]]; then
   if [[ -f ".venv/bin/activate" ]]; then
@@ -169,7 +169,11 @@ fi
 
 echo "🖥 Building GUI..."
 
+echo "/usr/lib/python3/dist-packages" > .venv/lib/python3.13/site-packages/system.pth
+
+cd "$GUI"
 run ./build-gui
+cd "$PROJECT_ROOT"
 
 echo "📦 Moving gui binaries..."
 

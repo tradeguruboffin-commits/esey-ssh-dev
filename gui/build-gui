@@ -3,7 +3,7 @@
 set -e
 
 APP_NAME="sshx-gui"
-ROOT_DIR="$(pwd)"
+ROOT_DIR="$(cd .. && pwd)"
 GUI_DIR="$ROOT_DIR/gui"
 
 echo "🚀 Cleaning old builds..."
@@ -21,6 +21,10 @@ pyinstaller \
   --name $APP_NAME \
   --clean \
   --noupx \
+  --hidden-import=gi \
+  --hidden-import=gi.repository.Gtk \
+  --hidden-import=gi.repository.Vte \
+  --collect-all gi \
   --add-data "../bin:bin" \
   --add-data "lib:gui/lib" \
   easy-ssh-gui.py
