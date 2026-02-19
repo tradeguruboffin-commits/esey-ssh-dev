@@ -1,0 +1,70 @@
+#!/bin/bash
+# =========================================================
+# Unified Build Script for SSHX Suite
+# Author: Sumit
+# =========================================================
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# ---------------- Config ----------------
+BIN_DIR="./bin"
+declare -A APPS=(
+    ["sshx"]="main.go"
+    ["sshx-stream"]="sshx-stream.go"
+    ["sshx-key"]="sshx-key.go"
+)
+
+# Colors
+GREEN="\e[32m"; BLUE="\e[34m"; RED="\e[31m"; YELLOW="\e[33m"; NC="\e[0m"; BOLD="\e[1m"
+
+# Detect host architecture
+ARCH=$(go env GOARCH)
+echo -e "${BLUE}${BOLD}🚀 Host Architecture detected: $ARCH${NC}"
+
+# Create bin directory
+mkdir -p "$BIN_DIR"
+
+# Initialize Go module if missing
+if [ ! -f "go.mod" ]; then
+    echo -e "${BLUE}⚙️ Initializing Go module...${NC}"
+    go mod init github.com/tradeguruboffin-commits/easy-ssh-dev &>/dev/null
+    go mod tidy &>/dev/null
+fi
+
+# ---------------- Build Loop ----------------
+for APP in "${!APPS[@]}"; do
+    SRC="${APPS[$APP]}"
+    OUTPUT="$BIN_DIR/$APP"
+
+    echo -e "\n${BLUE}${BOLD}🔨 Building $APP from $SRC...${NC}"
+
+    # Validation
+    if [ ! -f "$SRC" ]; then
+        echo -e "${RED}❌ Error: $SRC not found! Skipping $APP.${NC}"
+        continue
+    fi
+
+    # Build command
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o "$OUTPUT" "$SRC"
+    chmod +x "$OUTPUT"
+
+    # Check result
+    if [ -f "$OUTPUT" ]; then
+        SIZE=$(du -h "$OUTPUT" | cut -f1)
+        echo -e "${GREEN}✅ $APP build successful!${NC}"
+        echo -e "📦 Location: ${BOLD}$OUTPUT${NC} | Size: $SIZE"
+    else
+        echo -e "${RED}❌ $APP build failed!${NC}"
+    fi
+done
+
+echo -e "\n🧪 Test commands:"
+for APP in "${!APPS[@]}"; do
+    echo -e "  ./bin/$APP --help"
+done
+
+echo -e "\n📦 Install all binaries system-wide (optional):"
+echo -e "  sudo cp ./bin/* /usr/local/bin/"
+
+echo -e "\n${GREEN}${BOLD}⚙️ All Builds Completed!${NC}"

@@ -132,10 +132,9 @@ run rm -rf "$GUI/_internal"
 echo "🚀 Building Go binaries..."
 
 cd "$PROJECT_ROOT"
-run ./build-sshx
-run ./build-init
-run ./build-keyset
+run ./build-bin
 run ./build-lib
+run ./build-init
 
 # ---------------- Python Build ----------------
 

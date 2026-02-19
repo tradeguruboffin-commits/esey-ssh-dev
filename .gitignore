@@ -8,11 +8,12 @@ gui/sshx-gui
 bin/sshx
 sshx-dev
 bin/sshx-key
+bin/sshx-stream
 
 # Built lib binaries
-gui/lib/git-auth
-gui/lib/sshx-cpy
-gui/lib/sshx-reset
+lib/git-auth
+lib/sshx-cpy
+lib/sshx-reset
 
 # Built log
 install.log
