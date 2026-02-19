@@ -11,8 +11,12 @@ bin/sshx-key
 bin/sshx-stream
 
 # Built lib binaries
+!/lib/
+!/lib/README.md
+lib/*.so
+lib/*.exe
 lib/git-auth
-lib/sshx-cpy
+lib/sshx-cpy  
 lib/sshx-reset
 
 # Built log
